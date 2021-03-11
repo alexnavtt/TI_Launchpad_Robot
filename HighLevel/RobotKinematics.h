@@ -33,8 +33,8 @@
 #define ROBOT_DIAMETER 150
 #define ROBOT_RADIUS    75
 #define WHEEL_RADIUS    35
-#define ROBOT_RADIUS_F32 0.75f
-#define WHEEL_RADIUS_F32 0.35f
+#define ROBOT_RADIUS_F32 0.075f
+#define WHEEL_RADIUS_F32 0.035f
 
 /*
  * @param leftWheelVel      angular velocity of the left wheel (rad/s)
