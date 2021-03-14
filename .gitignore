@@ -1,0 +1,8 @@
+*.cmd
+.project
+.ccsproject
+.cproject
+Debug/
+.settings/
+.launches/
+*.lds
