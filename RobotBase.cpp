@@ -107,7 +107,7 @@ void initAll(){
     pushButtonInit();               // Init onboard buttons with interrupts
     Motor_Init(5000);               // Enable motors with a 5kHz PWM signal
     Reflectance_Init();             // Init line sensor
-    BumpInt_Init(&Motor_Disable);      // Enable bumpers to stop robot
+    BumpInt_Init(&Motor_Disable);   // Enable bumpers to stop robot
     Encoder_Init();                 // Enable tachometers
     T32_1_Init();                   // Start 32-bit clock (overflow once every 6 hours)
 }
@@ -169,14 +169,14 @@ void main(void){
 
     float x, y, theta1, theta2;
     while(1){
-        Odom_Get(&x, &y, &theta1);
-        if (theta1 < theta2) TOGGLE_RED_LED;
-        Clock_Delay1ms(10);
-        Odom_Get(&x, &y, &theta2);
-        if (theta2 < theta1) TOGGLE_RED_LED;
-        Clock_Delay1ms(10);
+//        Odom_Get(&x, &y, &theta1);
+//        if (theta1 < theta2) TOGGLE_RED_LED;
+//        Clock_Delay1ms(10);
+//        Odom_Get(&x, &y, &theta2);
+//        if (theta2 < theta1) TOGGLE_RED_LED;
+//        Clock_Delay1ms(10);
         // Advance state machine
-//        State_Next();
+        State_Next();
 //        WaitForInterrupt();
     }
 }
