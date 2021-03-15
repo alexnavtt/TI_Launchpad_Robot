@@ -33,7 +33,7 @@ extern "C"{
 
 // C++ includes
 #include "HighLevel/KalmanFilter.h"
-#include "ti/devices/msp432p4xx/driverlib/driverlib.h"
+//#include "ti/devices/msp432p4xx/driverlib/driverlib.h"
 
 
 /* ----- TIMERS -----*/
@@ -58,6 +58,8 @@ extern "C"{
 // P1 - 0: LED - Red
 //      1: Button
 //      4: Button
+//      6: Magnetometer
+//      7: Magnetometer
 
 // P2 - 0: LED - Multicoloured
 //      1: LED - Multicoloured
