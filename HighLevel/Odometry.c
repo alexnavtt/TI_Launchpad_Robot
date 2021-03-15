@@ -6,7 +6,6 @@
 #include "HighLevel/Odometry.h"
 #include "third_party/CMSIS/Include/arm_math.h"
 
-#define PI 3.14159265359
 #define _2PI 6.2831853
 
 static float x_;
