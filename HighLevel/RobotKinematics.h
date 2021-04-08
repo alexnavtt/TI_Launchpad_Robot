@@ -52,12 +52,14 @@ static inline void forwardKinematics(float leftWheelOmega, float rightWheelOmega
 }
 
 /*
+ * @param driveSpeed  input: linear speed of the robot (mm/s)
+ * @param omega       input: angular velocity of the robot (rad/s)
  * @param leftSpeed  output: rotation speed of the left wheel  (rad/s)
  * @param rightSpeed output: rotation speed of the right wheel (rad/s)
  */
 static inline void inverseKinematics(float driveSpeed, float omega, float* leftSpeed, float* rightSpeed){
-    *leftSpeed  = (driveSpeed - omega*ROBOT_RADIUS_F32)/WHEEL_RADIUS_F32;
-    *rightSpeed = (driveSpeed + omega*ROBOT_RADIUS_F32)/WHEEL_RADIUS_F32;
+    *leftSpeed  = (driveSpeed*0.001 - omega*ROBOT_RADIUS_F32)/WHEEL_RADIUS_F32;
+    *rightSpeed = (driveSpeed*0.001 + omega*ROBOT_RADIUS_F32)/WHEEL_RADIUS_F32;
 }
 
 #endif

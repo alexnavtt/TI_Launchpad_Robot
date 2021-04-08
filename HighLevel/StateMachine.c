@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 #include "msp.h"
 #include "Motor.h"
 #include "Clock.h"
@@ -6,6 +7,7 @@
 #include "Reflectance.h"
 #include "HighLevel/Odometry.h"
 #include "HighLevel/MotorPID.h"
+#include "HighLevel/RobotDriver.h"
 #include "HighLevel/StateMachine.h"
 
 static const RobotState* rState;
@@ -33,21 +35,21 @@ void driveForward(){
 void reverse(){
 //    setMotorSpeeds(-300, -300);
     PID_setPoint(-3, -3);
-    Clock_Delay1ms(600);
+    Clock_Delay1ms(1200);
 }
 
 void turnRight(){
     rEvent = NOTHING;
 //    setMotorSpeeds(300, -300);
     PID_setPoint(3, -3);
-    Clock_Delay1ms(300);
+    Clock_Delay1ms(1200);
 }
 
 void turnLeft(){
     rEvent = NOTHING;
 //    setMotorSpeeds(-300, 300);
     PID_setPoint(-3, 3);
-    Clock_Delay1ms(300);
+    Clock_Delay1ms(1200);
 }
 
 void Stop(){
@@ -58,12 +60,12 @@ void Stop(){
 
 // Next state in the order {NO_BUMP, LEFT_BUMP, RIGHT_BUMP, BOTH_BUMP}
 const RobotState StateMachine[] = {
-    {SHUTDOWN,   {SHUTDOWN,   SHUTDOWN,   SHUTDOWN,  SHUTDOWN},   &Motor_Disable},
-    {FREE,       {FREE,       HALT,       HALT,      HALT},       &driveForward},
+    {SHUTDOWN,   {SHUTDOWN,   SHUTDOWN,   SHUTDOWN,  SHUTDOWN  }, &Motor_Disable},
+    {FREE,       {FREE,       HALT,       HALT,      HALT      }, &driveForward},
     {REVERSE,    {RIGHT_TURN, RIGHT_TURN, LEFT_TURN, RIGHT_TURN}, &reverse},
-    {RIGHT_TURN, {FREE,       SHUTDOWN,   SHUTDOWN,  SHUTDOWN},   &turnRight},
-    {LEFT_TURN,  {FREE,       SHUTDOWN,   SHUTDOWN,  SHUTDOWN},   &turnLeft},
-    {HALT,       {REVERSE,    REVERSE,    REVERSE,  REVERSE},     &Stop}
+    {RIGHT_TURN, {FREE,       SHUTDOWN,   SHUTDOWN,  SHUTDOWN  }, &turnRight},
+    {LEFT_TURN,  {FREE,       SHUTDOWN,   SHUTDOWN,  SHUTDOWN  }, &turnLeft},
+    {HALT,       {REVERSE,    REVERSE,    REVERSE,   REVERSE   }, &Stop}
 };
 
 void Init_Required(){
@@ -141,52 +143,66 @@ void readState(){}
 
 #elif defined SQUARE
 
-#define PI 3.14159265359
-static float x, y, theta;
+//static float x, y, theta, theta_setpoint;
+static uint8_t setpoint_index = 0;
+static float x_setpoint[4] = {0, 0, 200, 200};
+static float y_setpoint[4] = {0, 200, 200, 0};
 
-void bump(){
+static void bump(){
     Motor_Disable();
     rEvent = BUMP;
 }
 
-void driveForward(){
-    PID_setPoint(3, 3);
-    if (x > 100){
+static void driveForward(){
+//    PID_setPoint(3, 3);
+    if (Driver_GoTo(x_setpoint[setpoint_index], y_setpoint[setpoint_index])){
         rEvent = CORNER_REACHED;
     }
 }
 
-void rotate(){
-    PID_setPoint(3, -3);
-    if (theta < -PI/2){
+static void rotate(){
+//    PID_setPoint(3, -3);
+//    if (Driver_GoToAngle(theta_setpoint)){
         rEvent = ANGLE_REACHED;
+//    }
+}
+
+static void updateSetpoint(){
+    if (rState->state == CORNER_ENTER){
+        setpoint_index++;
+//        theta_setpoint -= M_PI_2;
+//        if (theta_setpoint < -M_PI){
+//            theta_setpoint += 2*M_PI;
+//        }
     }
 }
 
-void pause(){
+static void pause(){
+    updateSetpoint();
     PID_setPoint(0, 0);
-    Clock_Delay1ms(500);
-//    Odom_Update(0, 0, 0);
+    Clock_Delay1ms(250);
+    Odom_Update(0, 0, 0);
 }
 
-// BUMP, CORNER_REACHED, ANGLE_REACHED
+// NOTHING, BUMP, CORNER_REACHED, ANGLE_REACHED
 const RobotState StateMachine[] = {
     {DRIVING,      {DRIVING,      HALTED, CORNER_ENTER, DRIVING    }, &driveForward},
     {ROTATING,     {ROTATING,     HALTED, ROTATING,     CORNER_EXIT}, &rotate},
-    {CORNER_ENTER, {CORNER_ENTER, HALTED, ROTATING,     ROTATING   }, &pause},
-    {CORNER_EXIT,  {CORNER_EXIT,  HALTED, DRIVING,      DRIVING    }, &pause},
+    {CORNER_ENTER, {ROTATING,     HALTED, ROTATING,     ROTATING   }, &pause},
+    {CORNER_EXIT,  {DRIVING,      HALTED, DRIVING,      DRIVING    }, &pause},
     {HALTED,       {HALTED,       HALTED, HALTED,       HALTED     }, &bump}
 };
 
 void readState(){
-    Odom_Get(&x, &y, &theta);
+//    Odom_Get(&x, &y, &theta);
 }
 
 void Init_Required(){
     Odom_Init();
     Odom_Update(0, 0, 0);
     readState();
-    rState = &StateMachine[0];
+//    theta_setpoint = 0;
+    rState = &StateMachine[1];  // start off by going to angle 0
     rEvent = NOTHING;
 }
 

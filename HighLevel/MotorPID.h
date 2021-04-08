@@ -25,6 +25,7 @@ void PID_Init();
  */
 void PID_setGains(enum MotorIndex motor, uint16_t Kp, uint16_t Ki, uint16_t Kff);
 void PID_setMaxVal(enum MotorIndex motor, float val);
+void PID_setMinVal(enum MotorIndex motor, float val);
 void PID_setMaxIntVal(enum MotorIndex motor, float val);
 void PID_setPoint(float left_setpt, float right_setpt);
 void PID_Control(enum MotorIndex motor);

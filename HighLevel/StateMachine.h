@@ -7,7 +7,7 @@
 extern "C"{
 #endif
 
-#define ROOMBA
+//#define ROOMBA
 //#define LINE_FOLLOWER
 #define SQUARE
 

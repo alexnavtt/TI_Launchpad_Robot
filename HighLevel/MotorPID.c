@@ -5,10 +5,11 @@
 #include "HighLevel/Encoders.h"
 #include "HighLevel/MotorPID.h"
 
-static uint16_t Kp[2];
-static uint16_t Ki[2];
-static uint16_t Kff[2];
+static uint16_t Kp[2]  = {0, 0};
+static uint16_t Ki[2]  = {0, 0};
+static uint16_t Kff[2] = {0, 0};
 static float max_val[2];
+static float min_val[2];
 static float setpt[2];
 
 void PID_Init(){
@@ -27,6 +28,10 @@ void PID_setGains(enum MotorIndex motor, uint16_t newKp, uint16_t newKi, uint16_
 
 void PID_setMaxVal(enum MotorIndex motor, float val){
     max_val[motor] = val;
+}
+
+void PID_setMinVal(enum MotorIndex motor, float val){
+    min_val[motor] = val;
 }
 
 void PID_setPoint(float left_setpoint, float right_setpoint){
@@ -58,8 +63,13 @@ void PID_Control(enum MotorIndex motor){
     float control_action =  Kp[motor]*error + Ki[motor]*sum[motor] + Kff[motor]*setpt[motor];
 
     // Limit control action
-    if (control_action >  max_val[motor]) control_action =  max_val[motor];
-    if (control_action < -max_val[motor]) control_action = -max_val[motor];
+    if      (control_action >  max_val[motor]) control_action =  max_val[motor];
+    else if (control_action < -max_val[motor]) control_action = -max_val[motor];
+
+    // Correction for very small values
+    if (setpt[motor] == 0) control_action == 0;
+    else if ((control_action > 0) && (control_action <  min_val[motor])) control_action =  min_val[motor];
+    else if ((control_action < 0) && (control_action > -min_val[motor])) control_action = -min_val[motor];
 
     switch(motor){
     case L_MOTOR:
