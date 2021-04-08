@@ -1,9 +1,11 @@
+
 // C includes
 extern "C"{
 
 // Standard Includes
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 // Board Includes
 #include "msp.h"
@@ -14,6 +16,7 @@ extern "C"{
 #include "Clock.h"           // Clock
 #include "Motor.h"           // Motors
 #include "TExaS.h"           // Debug
+#include "SysTick.h"         // SysTick
 #include "CortexM.h"         // Interrupt functions are defined here
 #include "BumpInt.h"         // Bumpers with interrupts
 #include "pushButton.h"      // Launchpad buttons
@@ -22,6 +25,7 @@ extern "C"{
 
 // Project Specific Includes
 #include "LowLevel/T32.h"
+#include "LowLevel/myI2C.h"
 #include "LowLevel/Timer.h"
 #include "HighLevel/Encoders.h"
 #include "HighLevel/MotorPID.h"
@@ -29,18 +33,21 @@ extern "C"{
 #include "HighLevel/StateMachine.h"
 #include "HighLevel/RobotKinematics.h"
 
+#include "Peripherals/TOF.h"
+#include "Peripherals/Sonar.h"
+#include "Peripherals/Magnetometer.h"
+
 }
 
 // C++ includes
 #include "HighLevel/KalmanFilter.h"
-//#include "ti/devices/msp432p4xx/driverlib/driverlib.h"
 
 
 /* ----- TIMERS -----*/
 //   SysTick is being used for Reflectance readings
 //   TimerA0 is being used for motor PWM (channels 3 & 4 output mode)
 //   TimerA1 is being used for 10Hz and 50Hz loop
-//   TimerA2 is unused
+//   TimerA2 is being used for Sonar distance sensors
 //   TimerA3 is being used for drive encoders (channels 0 & 1 input capture)
 //   Timer32 (Module 1) is being used as an all purpose timer for getting current system time
 //   Timer32 (Module 2) is unused
@@ -58,8 +65,8 @@ extern "C"{
 // P1 - 0: LED - Red
 //      1: Button
 //      4: Button
-//      6: Magnetometer
-//      7: Magnetometer
+//      6: Magnetometer I2C
+//      7: Magnetometer I2C
 
 // P2 - 0: LED - Multicoloured
 //      1: LED - Multicoloured
@@ -77,9 +84,13 @@ extern "C"{
 //      4: Bumper
 //      5: Bumper
 
-// P5 - 3: Line Sensor
+// P5 - 0: Sonar drive
+//      1: Sonar drive
+//      3: Line Sensor
 //      4: Drive Motor Direction
 //      5: Drive Motor Direction
+//      6: Sonar Input Capture
+//      7: Sonar Input Capture
 
 // P7 - 0: Line Sensor
 //      1: Line Sensor
@@ -97,10 +108,12 @@ extern "C"{
 
 void configurePID(){
     PID_Init();
-    PID_setGains(L_MOTOR, 0, 70, 40);
-    PID_setGains(R_MOTOR, 0, 70, 40);
+    PID_setGains(L_MOTOR, 30, 60, 40);
+    PID_setGains(R_MOTOR, 30, 60, 40);
     PID_setMaxVal(L_MOTOR, 300);
     PID_setMaxVal(R_MOTOR, 300);
+    PID_setMinVal(L_MOTOR, 50);
+    PID_setMinVal(R_MOTOR, 50);
 }
 
 void initAll(){
@@ -112,6 +125,10 @@ void initAll(){
     BumpInt_Init(&Motor_Disable);   // Enable bumpers to stop robot
     Encoder_Init();                 // Enable tachometers
     T32_1_Init();                   // Start 32-bit clock (overflow once every 6 hours)
+    Sonar_Init();                   // Configure the sonar distance sensor
+    Mag_Init();                     // Init magnetometer (slow function)
+    Odom_Update(0,0,0);             // Set odom to start at (x, y, theta) = (0, 0, 0)
+//    configurePID();                 // Set PID gains and limits
 }
 
 void toggle(){
@@ -122,14 +139,19 @@ void softMotorStop(){
     setMotorSpeeds(0,0);
 }
 
+static void printAngle(){
+    printf("Mag Angle: %.2f\n", Mag_GetAngle());
+}
+
 // This loop will run every 100ms
 void loop10Hz(){
     Reflectance_Update();
     Encoder_Update();
     PID_update();
+    Sonar_Update();
 }
 
-// This loopp will run every 20ms
+// This loop will run every 20ms
 void loop50Hz(){
     static float vx, omega;
     forwardKinematics(Encoder_leftWheelVel(), Encoder_rightWheelVel(), &vx, &omega);
@@ -141,44 +163,51 @@ void startLoops(){
     Timer_runSecondary(5, &loop10Hz, TIMER_A1);     // Start loop at 1/5 of 50Hz (i.e. 10Hz)
 }
 
-void showVel(){
-    static float vx;
-    static float omega;
-    forwardKinematics(Encoder_leftWheelVel(), Encoder_rightWheelVel(), &vx, &omega);
-    printf("\tvx: %.2f\t\tomega: %.2f\n", vx, omega);
+void calibrate(){
+    // Rotate the robot at 1 rad/s
+    float leftVel, rightVel;
+    inverseKinematics(0, 1, &leftVel, &rightVel);
+    PID_setPoint(leftVel, rightVel);
+
+    // Calibrate the magnetometer
+    float last_angle = Odom_Theta();
+    while (true){
+        Mag_Read();
+        SysTick_Wait1ms(20);
+        if (Odom_Theta() - last_angle < 0) break;
+        last_angle = Odom_Theta();
+    }
+    PID_setPoint(0,0);
 }
 
 void main(void){
     // Initialize
     DisableInterrupts();
     initAll();
-    NVIC_SetPriority(SysTick_IRQn, 2);
 
     // Setup
-    attachToLeftButton(&showVel);
     attachToRightButton(&Odom_Show);
-    configurePID();
+    attachToLeftButton(&printAngle);
+    Clock_Delay1ms(10);
     EnableInterrupts();
-    KalmanFilter Kalman;
 
-    // Loop main
-    State_Init();
+    // Start updating sensors
     startLoops();
 
-    float leftVel, rightVel;
-    inverseKinematics(0, 1.571, &leftVel, &rightVel);
-    PID_setPoint(leftVel,rightVel);
+    // Calibrate the Magnetometer
+    //    calibrate();
 
-    float x, y, theta1, theta2;
+    // Loop main
+//    State_Init();
+
+    float T1 = T32_Now();
+    float delay = 0.1; // delay time in seconds
     while(1){
-//        Odom_Get(&x, &y, &theta1);
-//        if (theta1 < theta2) TOGGLE_RED_LED;
-//        Clock_Delay1ms(10);
-//        Odom_Get(&x, &y, &theta2);
-//        if (theta2 < theta1) TOGGLE_RED_LED;
-//        Clock_Delay1ms(10);
         // Advance state machine
-        State_Next();
-//        WaitForInterrupt();
+        if (T32_Now() - T1 > delay){
+//            State_Next();
+            printf("Dist: %.2f, %.2f\n", Sonar_Read(0), Sonar_Read(1));
+            T1 = T32_Now();
+        }
     }
 }
