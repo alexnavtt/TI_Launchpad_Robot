@@ -147,13 +147,13 @@ void TA1_N_IRQHandler(){
     }
 }
 
-void TA2_N_IRQHandler(){
-    TIMER_A2->IV;
-    if (T2_overflow_count != T2_overflow_des){
-        T2_overflow_count++;
-        return;
-    }else{
-        T2_overflow_count = 0;
-    }
-    Timer2TaskN();
-}
+//void TA2_N_IRQHandler(){
+//    TIMER_A2->IV;
+//    if (T2_overflow_count != T2_overflow_des){
+//        T2_overflow_count++;
+//        return;
+//    }else{
+//        T2_overflow_count = 0;
+//    }
+//    Timer2TaskN();
+//}
