@@ -7,9 +7,9 @@
 extern "C"{
 #endif
 
-//#define ROOMBA
+#define ROOMBA
 //#define LINE_FOLLOWER
-#define SQUARE
+//#define SQUARE
 
 #ifdef ROOMBA
 enum RobotStateIndex{
@@ -72,7 +72,7 @@ enum RobotStateEvent{
 #endif
 
 typedef struct{
-    enum RobotStateIndex state;
+    const uint8_t state;
     const uint8_t next_state_by_event[EVENT_COUNT];
     void (*action)();
 } RobotState;

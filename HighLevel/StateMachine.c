@@ -10,8 +10,10 @@
 #include "HighLevel/RobotDriver.h"
 #include "HighLevel/StateMachine.h"
 
+#ifndef COMPETITION_BUILD
 static const RobotState* rState;
 static enum RobotStateEvent rEvent;
+#endif
 
 #ifdef ROOMBA
 void bump(){
@@ -34,14 +36,14 @@ void driveForward(){
 
 void reverse(){
 //    setMotorSpeeds(-300, -300);
-    PID_setPoint(-3, -3);
+    PID_setPoint(-2, -2);
     Clock_Delay1ms(1200);
 }
 
 void turnRight(){
     rEvent = NOTHING;
 //    setMotorSpeeds(300, -300);
-    PID_setPoint(3, -3);
+    PID_setPoint(2, -2);
     Clock_Delay1ms(1200);
 }
 
@@ -206,17 +208,6 @@ void Init_Required(){
     rEvent = NOTHING;
 }
 
-
-#elif defined COMPETITION_BUILD
-
-void bump(){
-
-}
-
-const RobotState StateMachine[] = {
-
-};
-
 #endif
 
 void State_Init(){
@@ -227,10 +218,7 @@ void State_Init(){
 
 void State_Next(){
     readState();
-//    enum RobotStateIndex prev_state = rState->state;
     rState = &StateMachine[rState->next_state_by_event[rEvent]];
-//    if(rState->state != prev_state) rState->action();
     rState->action();
-//    Reflectance_Show();
 }
 
