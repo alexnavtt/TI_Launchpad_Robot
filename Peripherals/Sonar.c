@@ -26,7 +26,7 @@ void Sonar_Init(){
     TIMER_A2->CTL &= ~0x0030;   // Halt the timer
     TIMER_A2->CTL |=  0x0004;   // Clear settings
 
-    // Divide input clock by 8 (prevents overflow error) for long distances
+    // Divide input clock by 8 (prevents overflow error for long distances)
     TIMER_A2->EX0 = 0x07;
 
     // Configure P5.6 as input capture
@@ -66,9 +66,10 @@ void TA2_N_IRQHandler(void){
 
     // Determine which Sonar module is generating the interrupt
     uint8_t interrupt_state = TIMER_A2->IV; // Note: This clears the highest priority interrupt flag
+
+    // Handle the appropriate event
     switch(interrupt_state){
     case 0x02:
-    case 0x06:
         // Sonar 1 interrupt
         index = 0;
         rising = TIMER_A2->CCTL[1] & CCI;  // read the capture pin 5.6
