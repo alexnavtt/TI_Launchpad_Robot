@@ -4,8 +4,16 @@
 #include <math.h>
 #include "string.h"
 #include "Clock.h"
+#include "RobotUtil.h"
 #include "LowLevel/myI2C.h"
 #include "Peripherals/Magnetometer.h"
+
+/* Connections:
+ * P1.6 - SDA (Yellow)
+ * P1.7 - SCL (Blue)
+ * 3.3V - Vcc
+ * GND  - GND
+ */
 
 // HMC5883L Characteristics
 #define MAGNETOMETER_ADDRESS 0x1E
@@ -31,6 +39,7 @@ static int16_t x_offset;
 static int16_t y_offset;
 static int16_t x_range;
 static int16_t y_range;
+static float angle_offset;
 
 
 enum DirectionIndex{
@@ -92,7 +101,8 @@ void Mag_Read(){
 
 float Mag_GetAngle(){
     Mag_Read();
-    return atan2(-(Readings.y - y_offset)/(float)y_range, (Readings.x - x_offset)/(float)x_range);
+    float raw_angle =  atan2(-(Readings.y - y_offset)/(float)y_range, (Readings.x - x_offset)/(float)x_range);
+    return Util_Angle(raw_angle - angle_offset);
 }
 
 void Mag_ReadRegister(uint8_t addr){
@@ -101,4 +111,8 @@ void Mag_ReadRegister(uint8_t addr){
     I2C_SendAndReceiveWithRestart(MODULE_0, MAGNETOMETER_ADDRESS, Tx, 1, Rx, 1);
 
 //    printf("Value at address 0x%02x is 0x%02x\n", addr, Rx[0]);
+}
+
+void Mag_SetOffset(float offset){
+    angle_offset = offset;
 }
