@@ -1,15 +1,10 @@
 #include "msp.h"
 #include "LowLevel/T32.h"
 
-#ifdef __cplusplus
-extern "C"{
-#endif
-
 static float T32_PERIOD;
 static uint32_t T32_FREQ;
 
 void T32_1_Init(){
-//    TIMER32_1->CONTROL = 0x0000008E;
     TIMER32_1->CONTROL =   (0x00000002    // 32 bit operation
                           | 0x00000004    // divide input by 16 (3 MHz)
                           | 0x00000080);  // enable timer
@@ -37,6 +32,3 @@ inline float T32_Now(){
     return T32_Count() * T32_PERIOD;
 }
 
-#ifdef __cplusplus
-}
-#endif
