@@ -1,10 +1,14 @@
 #include "msp.h"
-#include <stdio.h>
-#include <stdbool.h>
 #include <math.h>
-#include "string.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+
 #include "Clock.h"
+#include "Motor.h"
+#include "SysTick.h"
 #include "RobotUtil.h"
+
 #include "LowLevel/myI2C.h"
 #include "Peripherals/Magnetometer.h"
 
@@ -37,8 +41,8 @@ static int16_t min_x =  10000;
 static int16_t min_y =  10000;
 static int16_t x_offset;
 static int16_t y_offset;
-static int16_t x_range;
-static int16_t y_range;
+static int16_t x_range = 1;
+static int16_t y_range = 1;
 static float angle_offset;
 
 
@@ -77,16 +81,19 @@ void Mag_Init(){
     writeRegister(MODE_REGISTER,      0x00);
 }
 
-static void updateOffset(){
+void Mag_UpdateOffset(){
     if (Readings.x > max_x) max_x = Readings.x;
     if (Readings.x < min_x) min_x = Readings.x;
     if (Readings.y > max_y) max_y = Readings.y;
     if (Readings.y < min_y) min_y = Readings.y;
 
     x_range = 0.5*(max_x - min_x);
-    y_range = 0.5*(max_y - min_y);
     x_offset = 0.5*(max_x + min_x);
+    y_range = 0.5*(max_y - min_y);
     y_offset = 0.5*(max_y + min_y);
+
+    if (x_range <= 1) x_range = 1;
+    if (y_range <= 1) y_range = 1;
 }
 
 void Mag_Read(){
@@ -95,14 +102,17 @@ void Mag_Read(){
 
     Readings.x = (((uint16_t)RxData[0]) << 8) + RxData[1];
     Readings.y = (((uint16_t)RxData[4]) << 8) + RxData[5];
-
-    updateOffset();
 }
 
 float Mag_GetAngle(){
     Mag_Read();
-    float raw_angle =  atan2(-(Readings.y - y_offset)/(float)y_range, (Readings.x - x_offset)/(float)x_range);
-    return Util_Angle(raw_angle - angle_offset);
+
+    float normalized_y = -(Readings.y - y_offset)/(float)y_range;
+    float normalized_x = (Readings.x - x_offset)/(float)x_range;
+
+    float raw_angle = atan2f(normalized_y, normalized_x);
+    float adjusted_angle = Util_Angle(raw_angle - angle_offset);
+    return adjusted_angle;
 }
 
 void Mag_ReadRegister(uint8_t addr){

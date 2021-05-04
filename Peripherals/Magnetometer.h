@@ -8,5 +8,6 @@ void  Mag_Read();
 float Mag_GetAngle();
 void  Mag_ReadRegister(uint8_t);
 void  Mag_SetOffset(float offset);
+void  Mag_UpdateOffset();
 
 #endif
