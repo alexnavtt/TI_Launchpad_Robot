@@ -23,29 +23,28 @@ extern "C"{
 #include "onboardLED.h"      // Launchpad LEDs
 
 // Project Specific Includes
+#include "RobotUtil.h"
 #include "LowLevel/T32.h"
 #include "LowLevel/myI2C.h"
 #include "LowLevel/Timer.h"
 #include "HighLevel/Encoders.h"
 #include "HighLevel/MotorPID.h"
 #include "HighLevel/Odometry.h"
+#include "HighLevel/RobotDriver.h"
 #include "HighLevel/RobotKinematics.h"
-#include "HighLevel/FinalStateMachine.h"
+#include "StateMachine/FinalStateMachine.h"
 
-// Peripheral Sensor Includes
+// Peripheral Includes
 #include "Peripherals/Sonar.h"
 #include "Peripherals/Launcher.h"
 #include "Peripherals/MiniServo.h"
 #include "Peripherals/Magnetometer.h"
 }
 
-// C++ includes
-#include "HighLevel/KalmanFilter.h"
-
 
 /* ----- TIMERS -----*/
 //   TimerA0 is being used for motor PWM (channels 3 & 4 output mode)
-//   TimerA1 is being used for 10Hz and 50Hz loop
+//   TimerA1 is being used for Servo
 //   TimerA2 is being used for Sonar distance sensors
 //   TimerA3 is being used for drive encoders (channels 0 & 1 input capture)
 //   Timer32 (Module 1) is being used as an all purpose timer for getting current system time
@@ -86,8 +85,10 @@ extern "C"{
 //      6: Bumper
 //      7: Bumper
 
-// P5 - 0: Sonar drive
+// P5 - 0: Tachometer
 //      1: Sonar drive
+//      2: Tachometer
+//      3: Sonar drive
 //      4: Drive Motor Direction
 //      5: Drive Motor Direction
 //      6: Sonar Input Capture
@@ -98,8 +99,7 @@ extern "C"{
 // P7 - 1: Launcher Direction
 //      2: Launcher Direction
 //      3: Launcher Direction
-
-// P9 - 2: Line Sensor
+//      7: Servo Motor
 
 //P10 - 4: Tachometer
 //      5: Tachometer
@@ -132,6 +132,7 @@ void configurePID(){
 
 void baseRobotInit(){
     SysTick_Init();
+    onboardLEDInit();
     Clock_Init48MHz();              // Init Clock to 48MHz and SMCLK to 12MHz
     pushButtonInit();               // Init onboard buttons with interrupts
     Motor_Init(5000);               // Enable motors with a 5kHz PWM signal
@@ -147,7 +148,7 @@ void highLevelInit(){
 
 void peripheralInit(){
     Sonar_Init();                   // Configure the sonar distance sensor
-//    Mag_Init();                     // Init magnetometer (slow function)
+    Mag_Init();                     // Init magnetometer (slow function)
     Servo_Init();
     Launcher_Init();
 }
@@ -174,24 +175,9 @@ void loop50Hz(){
     Odom_Step(vx, omega);
 }
 
-void calibrate(){
-    // Rotate the robot at 1 rad/s
-    float leftVel, rightVel;
-    inverseKinematics(0, 1, &leftVel, &rightVel);
-    PID_setPoint(leftVel, rightVel);
-
-    // Calibrate the magnetometer
-    float last_angle = Odom_Theta();
-    while (true){
-        Mag_Read();
-        SysTick_Wait1ms(20);
-        if (Odom_Theta() - last_angle < 0) break;
-        last_angle = Odom_Theta();
-    }
-    PID_setPoint(0,0);
-}
-
 int main(void){
+    printf("\n ---------- Robot Start ---------- \n\n");
+
     // Initialize
     DisableInterrupts();
 
@@ -200,23 +186,23 @@ int main(void){
     peripheralInit();
     Clock_Delay1ms(10);
 
-    // Setup
     EnableInterrupts();
-    attachToLeftButton(&Servo_FullCW);
-    attachToRightButton(&Servo_FullACW);
+
+    // Setup
+//    attachToLeftButton(&Servo_FullCW);
+//    attachToRightButton(&Servo_FullACW);
 
     // LogicAnalyzer/Scope
 //    useLogic();
 //    useScope();
 
-    // Testing Components
-    SysTick_Wait1ms(2000);
-    Launcher_Fire();
 
     // Timing variables
     float TState, T10, T50 = T10 = TState = T32_Now();
-    float delay = 1.0f; // delay time in seconds
+    float state_rate = 10.0; // Hz
+    float delay = 1/state_rate; // delay time in seconds
 
+//    while (true);
     // Loop main
 //    State_Init();
     while(true){
@@ -225,8 +211,10 @@ int main(void){
         // Advance state machine
         if (now - TState > delay){
 //            State_Next();
-            printf("Dist0: %.2f, Dist1 %.2f\n", Sonar_Read(0), Sonar_Read(1));
+            float test_angle = Mag_GetAngle();
+            printf("Dist0: %.2f mm\t Dist1 %.2f mm\t Angle: %.2f rad\n", Sonar_Read(0), Sonar_Read(1), test_angle);
             TState = now;
+//            Driver_GoToAngle(M_PI_2);
         }
 
         // 50Hz Loop
