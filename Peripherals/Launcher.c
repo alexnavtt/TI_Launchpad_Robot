@@ -4,12 +4,12 @@
 
 // ----- Connections -----
 //
-// ENA to P2.4
-// IN1 to P7.3
-// IN2 to P6.3
-// IN3 to P7.2
-// IN4 to P7.1
-// ENB to P2.5
+// ENA to P2.4 (Dark Orange)
+// IN1 to P7.3 (Green)
+// IN2 to P6.3 (Gray)
+// IN3 to P7.2 (Yellow)
+// IN4 to P7.1 (White/Gray)
+// ENB to P2.5 (Light Orange)
 // Motor Power (Red) to L298N Motor Power 1
 // Motor Power (Black) to L298N Motor Power 2
 // L298N GND to Launchpad GND
