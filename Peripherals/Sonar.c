@@ -2,7 +2,7 @@
 #include "SysTick.h"
 #include "Peripherals/Sonar.h"
 
-#define DRIVE_PINS 0x03  // Pins 5.0(Sonar2) & 5.1(Sonar1)
+#define DRIVE_PINS 0x0A  // Pins 5.1(Sonar1) & 5.3(Sonar2)
 #define ECHO_PINS  0xC0  // Pins 5.6(Sonar1) & 5.7(Sonar2)
 
 static float timer_tick = 8*8.333e-2;  // microSeconds per timer tick
@@ -10,6 +10,7 @@ static float timer_tick = 8*8.333e-2;  // microSeconds per timer tick
 
 volatile static bool data_ready[2] = {true, true};
 volatile static uint16_t duration[2] = {0, 0};
+static uint8_t failed_count = 0;
 
 void Sonar_Init(){
     // Configure drive pin as GPIO
@@ -44,7 +45,17 @@ void Sonar_Init(){
 }
 
 void Sonar_Update(){
-    if (!(data_ready[0] && data_ready[1])) return;    // already in the middle of a measurement
+    // Already in the middle of a measurement
+    if (!(data_ready[0] && data_ready[1])) {
+        failed_count++;
+        // Account for the possibility of missing an edge
+        if (failed_count > 5){
+            data_ready[0] = true;
+            data_ready[1] = true;
+            failed_count = 0;
+        }
+        return;
+    }
 
     // Trigger the soundwave
     P5->OUT |=  DRIVE_PINS;
@@ -52,8 +63,9 @@ void Sonar_Update(){
     P5->OUT &= ~DRIVE_PINS;
 }
 
+// Return distance in mm
 float Sonar_Read(uint8_t index){
-    return MICROS(duration[index])/58.0f;
+    return MICROS(duration[index])/5.8f;
 }
 
 void TA2_N_IRQHandler(void){
