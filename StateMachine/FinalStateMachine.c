@@ -13,6 +13,7 @@
 #include "HighLevel/RobotKinematics.h"
 
 #include "Peripherals/Sonar.h"
+#include "Peripherals/Launcher.h"
 #include "Peripherals/Magnetometer.h"
 
 #include "StateMachine/FinalStateMachine.h"
@@ -72,6 +73,8 @@ static void reverse(){
     }else if (T32_Now() - start_time > 1.0){
         // If sufficient time has passed, set things back to normal
         PID_setPoint(0, 0);
+        whiteLED();
+        while (true);
 
         switch(rStage){
         case CALIBRATION:
@@ -91,21 +94,33 @@ static void reverse(){
 
 // Advance to the next stage of the plan
 static void advance(){
-    yellowLED();
-    Driver_GoToAngle(M_PI);
-    return;
+//    yellowLED();
+//    Driver_GoToAngle(M_PI);
+//    return;
 
     switch (rStage){
     case CALIBRATION:
         rStage = NAVIGATION;
+        rState = &NavigationStateMachine[LOST];
         break;
     case NAVIGATION:
         rStage = SHOOTING;
+        rState = &ShootingStateMachine[AIMING];
         break;
     case SHOOTING:
         rStage = NAVIGATION;
+        rState = &NavigationStateMachine[APPROACHING];
         break;
     }
+}
+
+static void testFunc(){
+    greenLED();
+    Motor_Disable();
+    Launcher_Fire();
+    blueLED();
+    rShootEvent = SHOOT_BUMP;
+    while(true);
 }
 
 // CALIBRATION
@@ -126,11 +141,11 @@ const RobotState CalibrationStateMachine[] = {
 const RobotState NavigationStateMachine[] = {
     {LOST,         {LOST,        NAV_REVERSE, APPROACHING, LOST       }, &getUnlost},
     {APPROACHING,  {APPROACHING, NAV_REVERSE, SEARCHING,   LOST       }, &approachBackboard},
-    {SEARCHING,    {SEARCHING,   NAV_REVERSE, HOMING,      LOST,      }, &dummy},
-    {CHECKING,     {CHECKING,    NAV_REVERSE, CHECKING,    SEARCHING  }, &dummy},
-    {HOMING,       {HOMING,      NAV_REVERSE, HOMING,      HOMING,    }, &dummy},
+    {SEARCHING,    {SEARCHING,   NAV_REVERSE, CHECKING,    LOST,      }, &goToNextBeacon},
+    {CHECKING,     {CHECKING,    NAV_REVERSE, ARRIVED,     SEARCHING  }, &alignWithNet},
+    {HOMING,       {HOMING,      NAV_REVERSE, HOMING,      HOMING,    }, &dummy},   // not used because I ran out of time
     {ARRIVED,      {ARRIVED,     NAV_REVERSE, ARRIVED,     ARRIVED,   }, &advance},
-    {NAV_REVERSE,  {NAV_REVERSE, NAV_REVERSE, NAV_REVERSE, NAV_REVERSE}, &dummy}
+    {NAV_REVERSE,  {NAV_REVERSE, NAV_REVERSE, NAV_REVERSE, NAV_REVERSE}, &reverse}
 };
 
 
@@ -138,7 +153,7 @@ const RobotState NavigationStateMachine[] = {
 // Function definitions found in ShootingFunctions.c
 // Events are NOTHING, FIRE, ALIGNED, BUMP
 const RobotState ShootingStateMachine[] = {
-    {AIMING,    {AIMING, RELOADING, FIRING, AIMING}, &dummy},
+    {AIMING,    {AIMING, RELOADING, FIRING, AIMING}, &testFunc},
     {FIRING,    {FIRING, VERIFYING, FIRING, AIMING}, &dummy},
     {RELOADING, {RELOADING, RELOADING, RELOADING, RELOADING}, &dummy},
     {VERIFYING, {VERIFYING, RELOADING, VERIFYING, VERIFYING}, &dummy}
@@ -149,8 +164,8 @@ const RobotState ShootingStateMachine[] = {
 /* ======================================================================== */
 
 void State_Init(){
-    BumpInt_Init(&bump);
-    rStage = CALIBRATION;
+    BumpInt_Init(&Motor_Disable);
+    rStage      = CALIBRATION;
     rCalEvent   = CAL_INIT;
     rNavEvent   = NAV_NOTHING;
     rShootEvent = SHOOT_NOTHING;
@@ -163,21 +178,18 @@ void State_Next(){
     switch(rStage){
     case CALIBRATION:
         rState = &CalibrationStateMachine[rState->next_state_by_event[rCalEvent]];
-        if (rState->state != last_state) rCalEvent = CAL_NOTHING;
+        if (rState->state != last_state) rCalEvent = CAL_NOTHING;       // reset event
         break;
     case NAVIGATION:
         rState = &NavigationStateMachine[rState->next_state_by_event[rNavEvent]];
-        if (rState->state != last_state) rNavEvent = NAV_NOTHING;
+        if (rState->state != last_state) rNavEvent = NAV_NOTHING;       // reset event
         break;
     case SHOOTING:
         rState = &ShootingStateMachine[rState->next_state_by_event[rShootEvent]];
-        if (rState->state != last_state) rShootEvent = SHOOT_NOTHING;
+        if (rState->state != last_state) rShootEvent = SHOOT_NOTHING;   // reset event
         break;
     }
 
-//    static const char* modes[] = {"CAL", "NAV", "SHOOT"};
-//    static const char* states[] = {"INIT", "REVERSE", "CALIBRATE", "ORIENTATE", "COMPLETE"};
-//    printf("Stage: %s\tState: %s\n", modes[rStage], states[rState->state]);
     rState->action();
 }
 

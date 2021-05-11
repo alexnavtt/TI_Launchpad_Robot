@@ -40,6 +40,9 @@ void approachBackboard();
 // Move along the backboard to find the correct beacon
 void goToNextBeacon();
 
+// Align the robot with the basket it's about to shoot into
+void alignWithNet();
+
 enum NavigationState{
     LOST,
     APPROACHING,
