@@ -41,7 +41,7 @@ void Servo_Init(){
     TIMER_A1->CTL |= 0x0002;
 }
 
-void Servo_setToAngle(int angle){
+void Servo_SetToAngle(int angle){
     uint32_t required_micros = (angle/180.0f) * (MAX_TICK_COUNT - MIN_TICK_COUNT) + MIN_TICK_COUNT;
     uint16_t required_ticks = required_micros * TICKS_PER_MICROSECOND;
     TIMER_A1->CCR[1] = required_ticks;
