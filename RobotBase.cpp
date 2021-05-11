@@ -189,8 +189,8 @@ int main(void){
     EnableInterrupts();
 
     // Setup
-//    attachToLeftButton(&Servo_FullCW);
-//    attachToRightButton(&Servo_FullACW);
+    attachToLeftButton(&Servo_FullCW);
+    attachToRightButton(&Servo_FullACW);
 
     // LogicAnalyzer/Scope
 //    useLogic();
@@ -199,22 +199,24 @@ int main(void){
 
     // Timing variables
     float TState, T10, T50 = T10 = TState = T32_Now();
-    float state_rate = 10.0; // Hz
+    float state_rate = 50; // Hz
     float delay = 1/state_rate; // delay time in seconds
 
-//    while (true);
-    // Loop main
-//    State_Init();
+//    Servo_FullCW();
+//    while(true);
+
+    State_Init();
     while(true){
         float now = T32_Now();
 
         // Advance state machine
         if (now - TState > delay){
-//            State_Next();
-            float test_angle = Mag_GetAngle();
-            printf("Dist0: %.2f mm\t Dist1 %.2f mm\t Angle: %.2f rad\n", Sonar_Read(0), Sonar_Read(1), test_angle);
+//            float test_angle = Mag_GetAngle();
+//            printf("Dist0: %.2f mm\t Dist1 %.2f mm\t Angle: %.2f rad\n", Sonar_Read(0), Sonar_Read(1), test_angle);
+//            printf("x: %.2f, y: %.2f, theta: %.2f\n", Odom_X(), Odom_Y(), Odom_Theta());
+//            Launcher_Fire();
+            State_Next();
             TState = now;
-//            Driver_GoToAngle(M_PI_2);
         }
 
         // 50Hz Loop
