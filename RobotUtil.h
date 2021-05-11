@@ -13,6 +13,12 @@ static inline int16_t Util_Modulo(int16_t a, int16_t b){
     return a - (a/b) * b;
 }
 
+static inline int16_t Util_Sign(float a){
+    if (a == 0) return 0;
+    else if (a > 0) return 1;
+    else return -1;
+}
+
 static inline float Util_Angle(float a){
     while (a >= 2*M_PI) a -= 2*M_PI;
     while (a <  0     ) a += 2*M_PI;
