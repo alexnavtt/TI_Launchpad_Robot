@@ -1,5 +1,7 @@
 #include "msp.h"
+#include "Clock.h"
 #include "SysTick.h"
+#include "Peripherals/MiniServo.h"
 #include "Peripherals/Launcher.h"
 
 // ----- Connections -----
@@ -21,6 +23,10 @@
 
 #define RIGHT_PWM_PIN   0x10
 #define RIGHT_PWM_INDEX 1
+
+// Servo angles
+#define HOME -45
+#define OPEN  0
 
 void Launcher_Init(){
     // Configure left PWM (assumes Motor_Init has been called)
@@ -45,10 +51,12 @@ void Launcher_Init(){
     P7->SELC &= ~0x0E;
     P7->DIR  |=  0x0E;
     P7->OUT  &= ~0x0E;
+
+    Servo_Init();
 }
 
 static void leftMotorOn(uint8_t duty){
-    P7->OUT = (P7->OUT & ~0x02) | 0x04;
+    P7->OUT = (P7->OUT & ~0x04) | 0x02;
     TIMER_A0->CCR[LEFT_PWM_INDEX] = (duty/100.0f) * TIMER_A0->CCR[0];
 }
 
@@ -65,9 +73,18 @@ void Launcher_Off(){
 
 void Launcher_Fire(){
     leftMotorOn(100);
+    SysTick_Wait1ms(200);
     rightMotorOn(100);
 
     SysTick_Wait1ms(2000);
+//    Clock_Delay1ms(2000);
 
     Launcher_Off();
 }
+
+void Launcher_Reload(){
+    Servo_SetToAngle(0);
+    SysTick_Wait1ms(100);
+    Servo_SetToAngle(HOME);
+}
+

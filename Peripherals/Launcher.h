@@ -4,5 +4,6 @@
 void Launcher_Init();
 void Launcher_Fire();
 void Launcher_Off();
+void Launcher_Reload();
 
 #endif
