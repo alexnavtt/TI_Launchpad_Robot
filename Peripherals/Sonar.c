@@ -65,7 +65,7 @@ void Sonar_Update(){
 
 // Return distance in mm
 float Sonar_Read(uint8_t index){
-    return MICROS(duration[index])/5.8f;
+    return MICROS(duration[1-index])/5.8f;  // index is flipped because I wired it wrong
 }
 
 void TA2_N_IRQHandler(void){
